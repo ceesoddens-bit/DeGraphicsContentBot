@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DE GRAPHICS - Chat</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Montserrat', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { background-color: #050505; color: white; overflow: hidden; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-dark { background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        
+        .atmosphere {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: radial-gradient(circle at 20% 30%, #1a365d 0%, transparent 50%),
+                        radial-gradient(circle at 80% 70%, #4c1d95 0%, transparent 50%),
+                        #050505;
+        }
+        .atmosphere::after {
+            content: ''; position: absolute; top: 10%; right: 15%; width: 300px; height: 300px;
+            background: #ec4899; filter: blur(120px); opacity: 0.15; border-radius: 50%;
+        }
+        .atmosphere::before {
+            content: ''; position: absolute; bottom: 10%; left: 10%; width: 400px; height: 400px;
+            background: #3b82f6; filter: blur(150px); opacity: 0.1; border-radius: 50%;
+        }
+
+        /* Scrollbar hide */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        .typing-dot { animation: typing 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="selection:bg-pink-500 selection:text-white">
+    <div class="flex flex-col h-screen font-sans">
+        <div class="atmosphere"></div>
+        
+        <header class="bg-black px-8 py-6 flex items-center justify-between z-20">
+            <div class="flex items-center tracking-[0.2em]">
+                <span class="text-2xl font-extrabold text-white">DE GR</span>
+                <div class="flex flex-col items-center justify-center mx-[-2px] translate-y-[1px]">
+                    <i data-lucide="chevron-up" class="w-5 h-5 text-white stroke-[4px]"></i>
+                    <i data-lucide="chevron-up" class="w-5 h-5 text-white stroke-[4px] -mt-3"></i>
+                </div>
+                <span class="text-2xl font-extrabold text-white">PHICS</span>
+            </div>
+        </header>
+
+        <main id="chat-container" class="flex-1 overflow-y-auto px-6 py-8 space-y-8 scrollbar-hide relative">
+            <div class="absolute top-20 left-10 opacity-20 pointer-events-none fixed">
+                <div class="w-64 h-64 border border-white/10 rotate-45"></div>
+            </div>
+            <div class="absolute bottom-20 right-10 opacity-20 pointer-events-none fixed">
+                <div class="w-48 h-48 border border-white/10 -rotate-12"></div>
+            </div>
+
+            <div id="messages" class="max-w-4xl mx-auto space-y-8 relative z-10">
+                </div>
+            
+            <div id="loading-indicator" class="max-w-4xl mx-auto hidden relative z-10">
+                <div class="flex justify-start">
+                    <div class="flex items-center glass px-6 py-4 rounded-3xl rounded-bl-none space-x-3">
+                        <div class="flex space-x-1">
+                            <div class="w-1.5 h-1.5 bg-white rounded-full typing-dot"></div>
+                            <div class="w-1.5 h-1.5 bg-white rounded-full typing-dot"></div>
+                            <div class="w-1.5 h-1.5 bg-white rounded-full typing-dot"></div>
+                        </div>
+                        <span class="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase">Processing</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="p-8 z-20 relative">
+            <div class="max-w-4xl mx-auto relative">
+                
+                <div id="image-preview-container" class="hidden absolute -top-24 left-4 glass-dark p-2 rounded-xl border border-white/10 shadow-2xl animate-fade-in">
+                    <img id="image-preview" class="h-16 w-16 object-cover rounded-lg" src="" alt="Preview">
+                    <button type="button" id="remove-image-btn" class="absolute -top-2 -right-2 bg-pink-500 text-white rounded-full p-1 shadow-lg hover:bg-pink-600 transition-colors">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                </div>
+
+                <form id="chat-form" class="glass-dark rounded-2xl p-2 flex items-center space-x-2 focus-within:border-white/20 transition-all">
+                    
+                    <input type="file" id="image-upload" accept="image/*" class="hidden">
+                    
+                    <button type="button" id="upload-btn" class="flex-shrink-0 text-white/40 hover:text-white p-4 transition-colors">
+                        <i data-lucide="paperclip" class="w-5 h-5"></i>
+                    </button>
+
+                    <textarea 
+                        id="message-input" 
+                        placeholder="START EEN PROJECT..." 
+                        class="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder:text-white/20 py-4 pr-6 text-xs font-bold tracking-[0.2em] uppercase resize-none outline-none" 
+                        rows="1" 
+                        style="min-height: 56px; max-height: 120px;"
+                    ></textarea>
+                    
+                    <button 
+                        type="submit" 
+                        id="submit-btn" 
+                        disabled
+                        class="flex-shrink-0 bg-white text-black hover:bg-pink-500 hover:text-white disabled:bg-white/10 disabled:text-white/20 rounded-xl p-4 transition-all duration-300 flex items-center justify-center group"
+                    >
+                        <i data-lucide="send" class="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform"></i>
+                    </button>
+                </form>
+                
+                <div class="mt-4 flex justify-between items-center px-2">
+                    <span class="text-[9px] font-bold tracking-[0.3em] text-white/20 uppercase">DE GRAPHICS © 2026</span>
+                    <div class="flex space-x-4">
+                        <span class="text-[9px] font-bold tracking-[0.3em] text-white/20 hover:text-white/60 cursor-pointer transition-colors">IG</span>
+                        <span class="text-[9px] font-bold tracking-[0.3em] text-white/20 hover:text-white/60 cursor-pointer transition-colors">LI</span>
+                        <span class="text-[9px] font-bold tracking-[0.3em] text-white/20 hover:text-white/60 cursor-pointer transition-colors">TW</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const WEBHOOK_URL = 'https://ceesodd.app.n8n.cloud/webhook/71633100-96a3-42ce-b159-ca32e49321ec';
+        const sessionId = 'chat-session-' + Math.random().toString(36).substring(7);
+        
+        let currentImageBase64 = null;
+
+        const elements = {
+            messages: document.getElementById('messages'),
+            form: document.getElementById('chat-form'),
+            input: document.getElementById('message-input'),
+            submitBtn: document.getElementById('submit-btn'),
+            loading: document.getElementById('loading-indicator'),
+            container: document.getElementById('chat-container'),
+            uploadInput: document.getElementById('image-upload'),
+            uploadBtn: document.getElementById('upload-btn'),
+            previewContainer: document.getElementById('image-preview-container'),
+            previewImg: document.getElementById('image-preview'),
+            removeImgBtn: document.getElementById('remove-image-btn')
+        };
+
+        // --- Image Upload Logic ---
+        elements.uploadBtn.addEventListener('click', () => {
+            elements.uploadInput.click();
+        });
+
+        elements.uploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    currentImageBase64 = event.target.result;
+                    elements.previewImg.src = currentImageBase64;
+                    elements.previewContainer.classList.remove('hidden');
+                    elements.submitBtn.disabled = false; // Enable submit button
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        elements.removeImgBtn.addEventListener('click', () => {
+            currentImageBase64 = null;
+            elements.uploadInput.value = '';
+            elements.previewContainer.classList.add('hidden');
+            if (!elements.input.value.trim()) {
+                elements.submitBtn.disabled = true;
+            }
+        });
+        // --------------------------
+
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function scrollToBottom() {
+            elements.container.scrollTo({
+                top: elements.container.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        function formatMessageContent(content, userImageUrl = null) {
+            let html = '';
+            
+            // Als de gebruiker een afbeelding meestuurt, toon deze bovenaan de ballon
+            if (userImageUrl) {
+                html += `<img src="${userImageUrl}" class="max-w-full rounded-xl mb-3 border border-white/10 shadow-lg object-contain max-h-64">`;
+            }
+
+            // Check of het bot-bericht een kale afbeelding URL is
+            const isImageUrl = /^(http|https):\/\/.*\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(content.trim());
+            
+            if (isImageUrl) {
+                html += `<img src="${content.trim()}" class="max-w-full rounded-xl border border-white/10 shadow-lg object-contain max-h-96">`;
+            } else if (content.trim()) {
+                // Zet eventuele markdown images (![alt](url)) om naar echte HTML images
+                let parsedContent = escapeHtml(content)
+                    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded-xl my-3 border border-white/10 shadow-lg">');
+                
+                html += `<p class="text-[15px] leading-relaxed font-light tracking-wide whitespace-pre-wrap break-words">${parsedContent}</p>`;
+            }
+
+            return html;
+        }
+
+        function addMessage(role, content, imageUrl = null) {
+            const time = formatTime(new Date());
+            const isUser = role === 'user';
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in`;
+            
+            msgDiv.innerHTML = `
+                <div class="flex max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'} items-end">
+                    <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mb-1 ${isUser ? 'bg-gradient-to-br from-pink-500 to-purple-600 ml-4' : 'glass mr-4'}">
+                        ${isUser 
+                            ? '<i data-lucide="user" class="w-5 h-5 text-white"></i>' 
+                            : '<div class="flex flex-col items-center justify-center"><i data-lucide="chevron-up" class="w-3 h-3 text-white stroke-[3px]"></i><i data-lucide="chevron-up" class="w-3 h-3 text-white stroke-[3px] -mt-2"></i></div>'
+                        }
+                    </div>
+                    <div class="px-6 py-4 rounded-3xl shadow-2xl ${isUser ? 'bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-br-none' : 'glass text-white rounded-bl-none'}">
+                        ${formatMessageContent(content, imageUrl)}
+                        <div class="flex items-center justify-between mt-3">
+                            <span class="text-[10px] font-bold tracking-widest text-white/30 uppercase">${isUser ? 'Client' : 'Agency'}</span>
+                            <span class="text-[10px] font-medium text-white/20">${time}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            elements.messages.appendChild(msgDiv);
+            lucide.createIcons({ root: msgDiv });
+            
+            setTimeout(scrollToBottom, 50);
+        }
+
+        addMessage('bot', 'Hallo! Ik ben de assistent van DE GRAPHICS. Hoe kan ik je vandaag helpen?');
+
+        elements.input.addEventListener('input', () => {
+            elements.submitBtn.disabled = !elements.input.value.trim() && !currentImageBase64;
+        });
+
+        elements.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!elements.submitBtn.disabled) {
+                    elements.form.dispatchEvent(new Event('submit'));
+                }
+            }
+        });
+
+        elements.form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const content = elements.input.value.trim();
+            const imageToSend = currentImageBase64; // Sla de afbeelding lokaal op voor verzending
+            
+            if (!content && !imageToSend) return;
+
+            // UI Reset
+            elements.input.value = '';
+            elements.uploadInput.value = '';
+            currentImageBase64 = null;
+            elements.previewContainer.classList.add('hidden');
+            elements.submitBtn.disabled = true;
+            elements.input.disabled = true;
+            
+            addMessage('user', content, imageToSend);
+            
+            elements.loading.classList.remove('hidden');
+            scrollToBottom();
+
+            try {
+                const response = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        message: content || "[Afbeelding meegestuurd]", // Valback tekst als alleen een image is gestuurd
+                        sessionId: sessionId,
+                        image: imageToSend // Dit is de Base64 string die n8n nu kan oppakken
+                    })
+                });
+
+                let botResponseContent = 'Bericht succesvol verzonden!';
+                const contentType = response.headers.get('content-type');
+                
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+                    if (data.output) botResponseContent = data.output;
+                    else if (data.message) botResponseContent = data.message;
+                    else if (data.response) botResponseContent = data.response;
+                    else if (typeof data === 'string') botResponseContent = data;
+                    else botResponseContent = JSON.stringify(data, null, 2);
+                } else {
+                    const text = await response.text();
+                    if (text) botResponseContent = text;
+                }
+
+                elements.loading.classList.add('hidden');
+                addMessage('bot', botResponseContent);
+            } catch (error) {
+                console.error('Error:', error);
+                elements.loading.classList.add('hidden');
+                addMessage('bot', 'Er is een fout opgetreden bij het verzenden van het bericht naar de webhook.');
+            } finally {
+                elements.input.disabled = false;
+                elements.input.focus();
+            }
+        });
+    </script>
+</body>
+</html>
