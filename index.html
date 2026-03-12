@@ -133,6 +133,15 @@
         </div>
 
         <main id="chat-container" class="flex-1 overflow-y-auto px-6 py-8 space-y-8 scrollbar-hide relative">
+            <!-- Hint for Antigravity Mode -->
+            <div id="antigravity-hint" class="hidden sticky top-0 left-0 z-20 pointer-events-none mb-2">
+                <div class="glass px-4 py-2 rounded-xl border border-white/10 w-fit backdrop-blur-md">
+                    <span class="text-[9px] font-bold tracking-[0.2em] text-white/50 uppercase">
+                        Als je een afbeelding wil genereren typ dat letterlijk: maak een afbeelding van ...
+                    </span>
+                </div>
+            </div>
+
             <div class="absolute top-20 left-10 opacity-20 pointer-events-none fixed">
                 <div class="w-64 h-64 border border-white/10 rotate-45"></div>
             </div>
@@ -247,6 +256,16 @@
             // Clear chat and notify
             elements.messages.innerHTML = '';
             chatHistory = []; // Clear memory on mode switch
+            
+            // Toggle hint
+            if (elements.antigravityHint) {
+                if (mode === 'antigravity') {
+                    elements.antigravityHint.classList.remove('hidden');
+                } else {
+                    elements.antigravityHint.classList.add('hidden');
+                }
+            }
+
             const modeName = mode === 'n8n-studio' ? 'n8n → Google Studio' : mode === 'antigravity' ? 'Antigravity' : 'n8n → Antigravity';
             addMessage('bot', `Modus gewijzigd naar: ${modeName}. Hoe kan ik helpen?`);
         }
@@ -324,7 +343,8 @@
             uploadBtn: document.getElementById('upload-btn'),
             previewContainer: document.getElementById('image-preview-container'),
             previewImg: document.getElementById('image-preview'),
-            removeImgBtn: document.getElementById('remove-image-btn')
+            removeImgBtn: document.getElementById('remove-image-btn'),
+            antigravityHint: document.getElementById('antigravity-hint')
         };
 
         // --- Image Upload Logic ---
