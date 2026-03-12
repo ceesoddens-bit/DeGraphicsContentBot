@@ -58,13 +58,10 @@ app.post('/api/chat', async (req, res) => {
             msgLower.includes('ontwerp een plaatje')) {
             
             // Let's use OpenAI DALL-E 3 for generation
-            // We append a style prompt to make it fit "De Graphics" better based on their site.
-            // Brand colors found: Deep Purple/Navy (#150b49), Vibrant Purple (#5633f7), Coral/Pink (#fc5441, #ff6273), Cyan (#4CD0E1)
-            // Style: Clean, modern, high-quality, professional, slightly playful, highly suitable for "leaderpakketten", "animaties", and "huisstijlen".
-            const stylePrompt = " A visually stunning, highly professional, clean and modern graphic design. " + 
-                                "Use the brand colors: deep navy purple, vibrant purples, coral/pink, and bright cyan. " +
-                                "The aesthetic should look like a high-end agency production, suitable for social media, with perfect lighting, " +
-                                "and a polished, modern vector-art or sleek 3D render feel. NO TEXT IN THE IMAGE.";
+            // Combined style prompt: Company Gradients + Small White Watermark Logo
+            const stylePrompt = " | STYLE: Modern, professional agency aesthetic. Use vibrant gradients and lighting with these brand colors: deep navy purple (#150b49), vibrant purple (#5633f7), coral/pink (#fc5441), and cyan (#4CD0E1). " +
+                                " | LOGO WATERMARK: In a corner of the image, place a small, minimalist, flat white digital watermark. The logo consists of two upward-pointing chevrons (like an abstract 'A') stacked one above the other. " +
+                                " | NO OTHER TEXT allowed in the image.";
                                 
             const finalImagePrompt = message + stylePrompt;
 
