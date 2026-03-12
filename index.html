@@ -60,6 +60,14 @@
             0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
             40% { transform: scale(1); opacity: 1; }
         }
+
+        /* Mobile Menu */
+        #mobile-menu {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #mobile-menu.hidden-menu {
+            transform: translateY(-100%);
+        }
     </style>
 </head>
 <body class="selection:bg-pink-500 selection:text-white">
@@ -104,7 +112,25 @@
                     n8n &rarr; Antigravity
                 </button>
             </div>
+
+            <!-- Mobile Menu Toggle -->
+            <button id="mobile-menu-toggle" class="md:hidden text-white/50 hover:text-white p-2 transition-colors">
+                <i data-lucide="menu" id="menu-icon" class="w-6 h-6"></i>
+            </button>
         </header>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden fixed inset-0 z-[15] bg-[#050505]/95 backdrop-blur-2xl flex flex-col pt-24 px-8 pb-8 space-y-4">
+            <button data-mode="n8n-studio" class="tab-btn-mobile w-full p-4 rounded-xl text-[10px] font-bold tracking-widest text-white bg-gradient-to-r from-pink-500/20 to-purple-600/20 border border-white/10 shadow-lg text-left uppercase">
+                n8n &rarr; Google Studio
+            </button>
+            <button data-mode="antigravity" class="tab-btn-mobile w-full p-4 rounded-xl text-[10px] font-bold tracking-widest text-white/50 border border-white/5 text-left hover:bg-white/5 transition-all uppercase">
+                Antigravity
+            </button>
+            <button data-mode="n8n-antigravity" class="tab-btn-mobile w-full p-4 rounded-xl text-[10px] font-bold tracking-widest text-white/50 border border-white/5 text-left hover:bg-white/5 transition-all uppercase">
+                n8n &rarr; Antigravity
+            </button>
+        </div>
 
         <main id="chat-container" class="flex-1 overflow-y-auto px-6 py-8 space-y-8 scrollbar-hide relative">
             <div class="absolute top-20 left-10 opacity-20 pointer-events-none fixed">
@@ -189,23 +215,71 @@
         let currentMode = 'n8n-studio'; // Default mode
 
         // --- Tab Switching Logic ---
+        function setActiveTab(mode) {
+            currentMode = mode;
+            
+            // Desktop buttons
+            tabBtns.forEach(b => {
+                const bMode = b.getAttribute('data-mode');
+                if (bMode === mode) {
+                    b.classList.remove('text-white/50', 'hover:text-white', 'hover:bg-white/5');
+                    b.classList.add('text-white', 'bg-gradient-to-r', 'from-pink-500/20', 'to-purple-600/20', 'border-white/10', 'shadow-lg');
+                } else {
+                    b.classList.remove('text-white', 'bg-gradient-to-r', 'from-pink-500/20', 'to-purple-600/20', 'border-white/10', 'shadow-lg');
+                    b.classList.add('text-white/50', 'hover:text-white', 'hover:bg-white/5');
+                }
+            });
+
+            // Mobile buttons
+            const mobileBtns = document.querySelectorAll('.tab-btn-mobile');
+            mobileBtns.forEach(b => {
+                const bMode = b.getAttribute('data-mode');
+                if (bMode === mode) {
+                    b.classList.remove('text-white/50', 'hover:bg-white/5');
+                    b.classList.add('text-white', 'bg-gradient-to-r', 'from-pink-500/20', 'to-purple-600/20', 'border-white/10', 'shadow-lg');
+                } else {
+                    b.classList.remove('text-white', 'bg-gradient-to-r', 'from-pink-500/20', 'to-purple-600/20', 'border-white/10', 'shadow-lg');
+                    b.classList.add('text-white/50', 'hover:bg-white/5');
+                }
+            });
+
+            // Clear chat and notify
+            elements.messages.innerHTML = '';
+            const modeName = mode === 'n8n-studio' ? 'n8n → Google Studio' : mode === 'antigravity' ? 'Antigravity' : 'n8n → Antigravity';
+            addMessage('bot', `Modus gewijzigd naar: ${modeName}. Hoe kan ik helpen?`);
+        }
+
         const tabBtns = document.querySelectorAll('.tab-btn');
         tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
-                // Remove active classes from all
-                tabBtns.forEach(b => {
-                    b.classList.remove('text-white', 'bg-gradient-to-r', 'from-pink-500/20', 'to-purple-600/20', 'border-white/10', 'shadow-lg');
-                    b.classList.add('text-white/50', 'hover:text-white', 'hover:bg-white/5');
-                });
-                // Add active classes to clicked
-                btn.classList.remove('text-white/50', 'hover:text-white', 'hover:bg-white/5');
-                btn.classList.add('text-white', 'bg-gradient-to-r', 'from-pink-500/20', 'to-purple-600/20', 'border-white/10', 'shadow-lg');
-                
-                currentMode = btn.getAttribute('data-mode');
-                
-                // Clear chat on mode switch (optional, maybe good for UX)
-                document.getElementById('messages').innerHTML = '';
-                addMessage('bot', `Modus gewijzigd naar: ${btn.textContent.trim()}. Hoe kan ik helpen?`);
+                setActiveTab(btn.getAttribute('data-mode'));
+            });
+        });
+
+        // Mobile Menu Logic
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const menuIcon = document.getElementById('menu-icon');
+        const tabBtnsMobile = document.querySelectorAll('.tab-btn-mobile');
+
+        mobileMenuToggle.addEventListener('click', () => {
+            const isHidden = mobileMenu.classList.contains('hidden');
+            if (isHidden) {
+                mobileMenu.classList.remove('hidden');
+                menuIcon.setAttribute('data-lucide', 'x');
+            } else {
+                mobileMenu.classList.add('hidden');
+                menuIcon.setAttribute('data-lucide', 'menu');
+            }
+            lucide.createIcons({ root: mobileMenuToggle });
+        });
+
+        tabBtnsMobile.forEach(btn => {
+            btn.addEventListener('click', () => {
+                setActiveTab(btn.getAttribute('data-mode'));
+                mobileMenu.classList.add('hidden');
+                menuIcon.setAttribute('data-lucide', 'menu');
+                lucide.createIcons({ root: mobileMenuToggle });
             });
         });
         // ---------------------------
