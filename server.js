@@ -48,16 +48,34 @@ app.post('/api/chat', async (req, res) => {
         }
 
         // --- Handle Image Generation Command ---
-        if (message.toLowerCase().includes('genereer een plaatje') || message.toLowerCase().includes('maak een plaatje') || message.toLowerCase().includes('generate an image')) {
-            // Let's use OpenAI DALL-E 3 for generation until we know what Nano Banana is
+        const msgLower = message.toLowerCase();
+        if (msgLower.includes('genereer een plaatje') || 
+            msgLower.includes('maak een plaatje') || 
+            msgLower.includes('generate an image') ||
+            msgLower.includes('maak een afbeelding') ||
+            msgLower.includes('genereer een afbeelding') ||
+            msgLower.includes('teken een') ||
+            msgLower.includes('ontwerp een plaatje')) {
+            
+            // Let's use OpenAI DALL-E 3 for generation
+            // We append a style prompt to make it fit "De Graphics" better based on their site.
+            // Brand colors found: Deep Purple/Navy (#150b49), Vibrant Purple (#5633f7), Coral/Pink (#fc5441, #ff6273), Cyan (#4CD0E1)
+            // Style: Clean, modern, high-quality, professional, slightly playful, highly suitable for "leaderpakketten", "animaties", and "huisstijlen".
+            const stylePrompt = " A visually stunning, highly professional, clean and modern graphic design. " + 
+                                "Use the brand colors: deep navy purple, vibrant purples, coral/pink, and bright cyan. " +
+                                "The aesthetic should look like a high-end agency production, suitable for social media, with perfect lighting, " +
+                                "and a polished, modern vector-art or sleek 3D render feel. NO TEXT IN THE IMAGE.";
+                                
+            const finalImagePrompt = message + stylePrompt;
+
             const imageResponse = await openai.images.generate({
                 model: "dall-e-3",
-                prompt: message,
+                prompt: finalImagePrompt,
                 n: 1,
                 size: "1024x1024"
             });
             const imageUrl = imageResponse.data[0].url;
-            return res.json({ response: `Hier is het gegenereerde plaatje:\n\n![Gegenereerd Plaatje](${imageUrl})` });
+            return res.json({ response: `Hier is de afbeelding in de stijl van De Graphics die ik voor je heb gemaakt:\n\n![Gegenereerde Afbeelding](${imageUrl})` });
         }
 
         // --- Handle Normal Chat & Vision ---
