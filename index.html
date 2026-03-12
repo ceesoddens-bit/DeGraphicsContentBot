@@ -213,6 +213,7 @@
         
         let currentImageBase64 = null;
         let currentMode = 'n8n-studio'; // Default mode
+        let chatHistory = []; // Chat memory for Antigravity mode
 
         // --- Tab Switching Logic ---
         function setActiveTab(mode) {
@@ -245,6 +246,7 @@
 
             // Clear chat and notify
             elements.messages.innerHTML = '';
+            chatHistory = []; // Clear memory on mode switch
             const modeName = mode === 'n8n-studio' ? 'n8n → Google Studio' : mode === 'antigravity' ? 'Antigravity' : 'n8n → Antigravity';
             addMessage('bot', `Modus gewijzigd naar: ${modeName}. Hoe kan ik helpen?`);
         }
@@ -473,7 +475,11 @@
                     const aiResponse = await fetch('http://localhost:3001/api/chat', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: content, image: imageToSend })
+                        body: JSON.stringify({ 
+                            message: content, 
+                            image: imageToSend,
+                            history: chatHistory // Send accumulated history
+                        })
                     });
                     
                     if (!aiResponse.ok) {
@@ -483,6 +489,17 @@
                     
                     const aiData = await aiResponse.json();
                     botResponseContent = aiData.response;
+
+                    // Update local history
+                    if (content || imageToSend) {
+                        chatHistory.push({ role: 'user', content: content || "[Afbeelding]" });
+                    }
+                    chatHistory.push({ role: 'assistant', content: botResponseContent });
+                    
+                    // Keep history manageable (e.g., last 10 messages)
+                    if (chatHistory.length > 20) {
+                        chatHistory = chatHistory.slice(-20);
+                    }
                     
                 } else {
                     // --- Existing n8n Webhook Integration ---
