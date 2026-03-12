@@ -176,6 +176,15 @@
                     </button>
                 </div>
 
+                <div class="flex space-x-2 mb-4 px-2">
+                    <button type="button" class="quick-action-btn glass px-4 py-2 rounded-full text-[9px] font-bold tracking-[0.2em] text-white/50 hover:text-white hover:border-white/30 transition-all uppercase" data-text="maak een afbeelding van ">
+                        Afbeelding genereren
+                    </button>
+                    <button type="button" class="quick-action-btn glass px-4 py-2 rounded-full text-[9px] font-bold tracking-[0.2em] text-white/50 hover:text-white hover:border-white/30 transition-all uppercase" data-text="Maak dit in de huisstijl">
+                        Style in huisstijl
+                    </button>
+                </div>
+
                 <form id="chat-form" class="glass-dark rounded-2xl p-2 flex items-center space-x-2 focus-within:border-white/20 transition-all">
                     
                     <input type="file" id="image-upload" accept="image/*" class="hidden">
@@ -396,6 +405,16 @@
             if (!elements.input.value.trim()) {
                 elements.submitBtn.disabled = true;
             }
+        });
+        // --- Quick Action Buttons ---
+        document.querySelectorAll('.quick-action-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const text = btn.getAttribute('data-text');
+                elements.input.value = text;
+                elements.input.focus();
+                // Trigger input event to update submit button state
+                elements.input.dispatchEvent(new Event('input'));
+            });
         });
         // --------------------------
 
