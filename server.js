@@ -5,7 +5,8 @@ const { OpenAI } = require('openai');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
@@ -42,13 +43,49 @@ Gedraag je als de officiële vertegenwoordiger van De Graphics. Jouw doel is om 
 app.post('/api/chat', async (req, res) => {
     try {
         const { message, image } = req.body;
+        const msgLower = (message || "").toLowerCase();
 
         if (!process.env.OPENAI_API_KEY) {
             return res.status(500).json({ error: 'Geen OPENAI_API_KEY ingesteld in .env bestand op de server.' });
         }
 
-        // --- Handle Image Generation Command ---
-        const msgLower = message.toLowerCase();
+        // --- Handle Image Restyling (If image is present and user asks for style) ---
+        const isRestyleRequest = image && (msgLower.includes('stijl van het bedrijf') || msgLower.includes('restyle') || msgLower.includes('huisstijl'));
+
+        if (isRestyleRequest) {
+            // Step 1: Use GPT-4o to describe the image
+            const visionResponse = await openai.chat.completions.create({
+                model: 'gpt-4o',
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: "Beschrijf deze afbeelding zeer gedetailleerd zodat ik deze beschrijving kan gebruiken om een nieuwe versie ervan te genereren. Focus op de compositie, objecten en sfeer, maar negeer de huidige kleuren en stijl." },
+                            { type: 'image_url', image_url: { url: image } }
+                        ]
+                    }
+                ]
+            });
+
+            const imageDescription = visionResponse.choices[0].message.content;
+
+            // Step 2: Use description to generate new branded image
+            const stylePrompt = " | STYLE: Modern, professional agency aesthetic. Use vibrant gradients and lighting with these brand colors: deep navy purple (#150b49), vibrant purple (#5633f7), coral/pink (#fc5441), and cyan (#4CD0E1). " +
+                                " | LOGO WATERMARK: In a corner of the image, place a small, minimalist, flat white digital watermark. The logo consists of two upward-pointing chevrons (like an abstract 'A') stacked one above the other. " +
+                                " | NO OTHER TEXT allowed in the image.";
+
+            const imageResponse = await openai.images.generate({
+                model: "dall-e-3",
+                prompt: `Een professionele grafische herinterpretatie van het volgende: ${imageDescription} ${stylePrompt}`,
+                n: 1,
+                size: "1024x1024"
+            });
+
+            const imageUrl = imageResponse.data[0].url;
+            return res.json({ response: `Ik heb je afbeelding geanalyseerd en opnieuw ontworpen in de stijl van De Graphics:\n\n![Gerestylde Afbeelding](${imageUrl})` });
+        }
+
+        // --- Handle Normal Image Generation ---
         if (msgLower.includes('genereer een plaatje') || 
             msgLower.includes('maak een plaatje') || 
             msgLower.includes('generate an image') ||
@@ -57,7 +94,6 @@ app.post('/api/chat', async (req, res) => {
             msgLower.includes('teken een') ||
             msgLower.includes('ontwerp een plaatje')) {
             
-            // Let's use OpenAI DALL-E 3 for generation
             // Combined style prompt: Company Gradients + Small White Watermark Logo
             const stylePrompt = " | STYLE: Modern, professional agency aesthetic. Use vibrant gradients and lighting with these brand colors: deep navy purple (#150b49), vibrant purple (#5633f7), coral/pink (#fc5441), and cyan (#4CD0E1). " +
                                 " | LOGO WATERMARK: In a corner of the image, place a small, minimalist, flat white digital watermark. The logo consists of two upward-pointing chevrons (like an abstract 'A') stacked one above the other. " +
