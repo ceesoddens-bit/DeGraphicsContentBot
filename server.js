@@ -43,7 +43,7 @@ Gedraag je als de officiële vertegenwoordiger van De Graphics. Jouw doel is om 
 
 app.post('/api/chat', async (req, res) => {
     try {
-        const { message, image } = req.body;
+        const { message, image, history } = req.body;
         const msgLower = (message || "").toLowerCase();
 
         if (!process.env.OPENAI_API_KEY) {
@@ -117,6 +117,11 @@ app.post('/api/chat', async (req, res) => {
             { role: 'system', content: SYSTEM_PROMPT }
         ];
 
+        // Add history if present
+        if (history && Array.isArray(history)) {
+            messages.push(...history);
+        }
+
         if (image) {
             // GPT-4o Vision format
             messages.push({
@@ -129,6 +134,8 @@ app.post('/api/chat', async (req, res) => {
         } else {
             messages.push({ role: 'user', content: message });
         }
+
+        console.log('Sending to OpenAI:', JSON.stringify(messages, null, 2));
 
         const response = await openai.chat.completions.create({
             model: 'gpt-4o', // gpt-4o supports vision better than gpt-4o-mini

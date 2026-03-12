@@ -221,14 +221,41 @@
         const sessionId = 'chat-session-' + Math.random().toString(36).substring(7);
         
         let currentImageBase64 = null;
-        let currentMode = 'n8n-studio'; // Default mode
-        let chatHistory = []; // Chat memory for Antigravity mode
+        let currentMode = sessionStorage.getItem('de_graphics_mode') || 'n8n-studio'; 
+        
+        // --- Memory Logic ---
+        let chatMemories = JSON.parse(sessionStorage.getItem('de_graphics_memories')) || {};
+        let chatHistory = chatMemories[currentMode] || []; 
 
-        // --- Tab Switching Logic ---
+        function saveMemories() {
+            if (currentMode) {
+                chatMemories[currentMode] = chatHistory;
+                sessionStorage.setItem('de_graphics_memories', JSON.stringify(chatMemories));
+                sessionStorage.setItem('de_graphics_mode', currentMode);
+            }
+        }
+
+        function renderHistory() {
+            elements.messages.innerHTML = '';
+            if (chatHistory.length === 0) {
+                addMessage('bot', 'Hallo! Ik ben de assistent van DE GRAPHICS. Hoe kan ik je vandaag helpen?');
+            } else {
+                chatHistory.forEach(msg => {
+                    // We store simplified objects for memory, so we adapt addMessage slightly
+                    addMessage(msg.role === 'user' ? 'user' : 'bot', msg.content, msg.imageUrl, false);
+                });
+            }
+        }
+
         function setActiveTab(mode) {
+            // Save current memory before switching
+            saveMemories();
+
             currentMode = mode;
-            
-            // Desktop buttons
+            // Load memory for the new mode
+            chatHistory = chatMemories[currentMode] || [];
+
+            // Desktop buttons UI
             tabBtns.forEach(b => {
                 const bMode = b.getAttribute('data-mode');
                 if (bMode === mode) {
@@ -240,7 +267,7 @@
                 }
             });
 
-            // Mobile buttons
+            // Mobile buttons UI
             const mobileBtns = document.querySelectorAll('.tab-btn-mobile');
             mobileBtns.forEach(b => {
                 const bMode = b.getAttribute('data-mode');
@@ -253,9 +280,8 @@
                 }
             });
 
-            // Clear chat and notify
-            elements.messages.innerHTML = '';
-            chatHistory = []; // Clear memory on mode switch
+            // Render historical messages
+            renderHistory();
             
             // Toggle hint
             if (elements.antigravityHint) {
@@ -265,9 +291,6 @@
                     elements.antigravityHint.classList.add('hidden');
                 }
             }
-
-            const modeName = mode === 'n8n-studio' ? 'n8n → Google Studio' : mode === 'antigravity' ? 'Antigravity' : 'n8n → Antigravity';
-            addMessage('bot', `Modus gewijzigd naar: ${modeName}. Hoe kan ik helpen?`);
         }
 
         const tabBtns = document.querySelectorAll('.tab-btn');
@@ -420,7 +443,7 @@
             return html;
         }
 
-        function addMessage(role, content, imageUrl = null) {
+        function addMessage(role, content, imageUrl = null, shouldSave = true) {
             const time = formatTime(new Date());
             const isUser = role === 'user';
             
@@ -448,10 +471,17 @@
             elements.messages.appendChild(msgDiv);
             lucide.createIcons({ root: msgDiv });
             
+            if (shouldSave) {
+                chatHistory.push({ role: role === 'user' ? 'user' : 'assistant', content, imageUrl });
+                if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+                saveMemories();
+            }
+
             setTimeout(scrollToBottom, 50);
         }
 
-        addMessage('bot', 'Hallo! Ik ben de assistent van DE GRAPHICS. Hoe kan ik je vandaag helpen?');
+        // Initial render / mode setup
+        setActiveTab(currentMode);
 
         elements.input.addEventListener('input', () => {
             elements.submitBtn.disabled = !elements.input.value.trim() && !currentImageBase64;
@@ -498,7 +528,7 @@
                         body: JSON.stringify({ 
                             message: content, 
                             image: imageToSend,
-                            history: chatHistory // Send accumulated history
+                            history: chatHistory.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
                         })
                     });
                     
@@ -509,17 +539,6 @@
                     
                     const aiData = await aiResponse.json();
                     botResponseContent = aiData.response;
-
-                    // Update local history
-                    if (content || imageToSend) {
-                        chatHistory.push({ role: 'user', content: content || "[Afbeelding]" });
-                    }
-                    chatHistory.push({ role: 'assistant', content: botResponseContent });
-                    
-                    // Keep history manageable (e.g., last 10 messages)
-                    if (chatHistory.length > 20) {
-                        chatHistory = chatHistory.slice(-20);
-                    }
                     
                 } else {
                     // --- Existing n8n Webhook Integration ---
