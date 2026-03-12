@@ -41,18 +41,46 @@ Gedraag je als de officiële vertegenwoordiger van De Graphics. Jouw doel is om 
 
 app.post('/api/chat', async (req, res) => {
     try {
-        const { message } = req.body;
+        const { message, image } = req.body;
 
         if (!process.env.OPENAI_API_KEY) {
             return res.status(500).json({ error: 'Geen OPENAI_API_KEY ingesteld in .env bestand op de server.' });
         }
 
+        // --- Handle Image Generation Command ---
+        if (message.toLowerCase().includes('genereer een plaatje') || message.toLowerCase().includes('maak een plaatje') || message.toLowerCase().includes('generate an image')) {
+            // Let's use OpenAI DALL-E 3 for generation until we know what Nano Banana is
+            const imageResponse = await openai.images.generate({
+                model: "dall-e-3",
+                prompt: message,
+                n: 1,
+                size: "1024x1024"
+            });
+            const imageUrl = imageResponse.data[0].url;
+            return res.json({ response: `Hier is het gegenereerde plaatje:\n\n![Gegenereerd Plaatje](${imageUrl})` });
+        }
+
+        // --- Handle Normal Chat & Vision ---
+        let messages = [
+            { role: 'system', content: SYSTEM_PROMPT }
+        ];
+
+        if (image) {
+            // GPT-4o Vision format
+            messages.push({
+                role: 'user',
+                content: [
+                    { type: 'text', text: message || "Wat staat er op deze afbeelding? Analyseer dit voor social media." },
+                    { type: 'image_url', image_url: { url: image } }
+                ]
+            });
+        } else {
+            messages.push({ role: 'user', content: message });
+        }
+
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini', 
-            messages: [
-                { role: 'system', content: SYSTEM_PROMPT },
-                { role: 'user', content: message }
-            ]
+            model: 'gpt-4o', // gpt-4o supports vision better than gpt-4o-mini
+            messages: messages
         });
 
         res.json({ response: response.choices[0].message.content });
